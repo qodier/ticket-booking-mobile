@@ -14,13 +14,14 @@ export default function NewEvent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
-  const [date, setDate] = useState(new Date());
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date(new Date().getTime() + 2 * 60 * 60 * 1000)); // Default to 2 hours later
 
   async function onSubmit() {
     try {
       setIsSubmitting(true);
 
-      await eventService.createOne(name, location, date.toISOString());
+      await eventService.createOne(name, location, startDate.toISOString(), endDate.toISOString());
       router.back();
     } catch (error) {
       Alert.alert("Error", "Failed to create event");
@@ -29,13 +30,24 @@ export default function NewEvent() {
     }
   }
 
-  function onChangeDate(date?: Date) {
-    setDate(date || new Date());
+  function onChangeStartDate(date?: Date) {
+    const newStartDate = date || new Date();
+    setStartDate(newStartDate);
+    
+    // If end date is before start date, update end date to be 2 hours after start date
+    if (endDate < newStartDate) {
+      setEndDate(new Date(newStartDate.getTime() + 2 * 60 * 60 * 1000));
+    }
+  }
+
+  function onChangeEndDate(date?: Date) {
+    const newEndDate = date || new Date();
+    setEndDate(newEndDate);
   }
 
   useEffect(() => {
     navigation.setOptions({ headerTitle: "New Event" });
-  }, []);
+  }, [navigation]);
 
   return (
     <VStack m={ 20 } flex={ 1 } gap={ 30 }>
@@ -57,7 +69,7 @@ export default function NewEvent() {
         <Input
           value={ location }
           onChangeText={ setLocation }
-          placeholder="Name"
+          placeholder="Location"
           placeholderTextColor="darkgray"
           h={ 48 }
           p={ 14 }
@@ -65,8 +77,13 @@ export default function NewEvent() {
       </VStack>
 
       <VStack gap={ 5 }>
-        <Text ml={ 10 } fontSize={ 14 } color="gray">Date</Text>
-        <DateTimePicker onChange={onChangeDate} currentDate={date}/>
+        <Text ml={ 10 } fontSize={ 14 } color="gray">Start Date & Time</Text>
+        <DateTimePicker onChange={onChangeStartDate} currentDate={startDate}/>
+      </VStack>
+
+      <VStack gap={ 5 }>
+        <Text ml={ 10 } fontSize={ 14 } color="gray">End Date & Time</Text>
+        <DateTimePicker onChange={onChangeEndDate} currentDate={endDate}/>
       </VStack>
 
       <Button
@@ -80,4 +97,4 @@ export default function NewEvent() {
 
     </VStack>
   );
-};
+}

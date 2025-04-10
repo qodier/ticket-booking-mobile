@@ -46,10 +46,12 @@ export default function EventDetailsScreen() {
     if (!eventData) return;
     try {
       setIsSubmitting(true);
-      await eventService.updateOne(Number(id),
+      await eventService.updateOne(
+        Number(id),
         eventData.name,
         eventData.location,
-        eventData.date
+        eventData.startDate,
+        eventData.endDate
       );
       router.back();
     } catch (error) {
@@ -97,7 +99,7 @@ export default function EventDetailsScreen() {
         <Input
           value={eventData?.location}
           onChangeText={(value) => updateField("location", value)}
-          placeholder="Name"
+          placeholder="Location"
           placeholderTextColor="darkgray"
           h={48}
           p={14}
@@ -105,10 +107,18 @@ export default function EventDetailsScreen() {
       </VStack>
 
       <VStack gap={5}>
-        <Text ml={10} fontSize={14} color="gray">Date</Text>
+        <Text ml={10} fontSize={14} color="gray">Start Date & Time</Text>
         <DateTimePicker
-          onChange={(date) => updateField('date', date || new Date())}
-          currentDate={new Date(eventData?.date || new Date())}
+          onChange={(date) => updateField('startDate', date || new Date())}
+          currentDate={new Date(eventData?.startDate || new Date())}
+        />
+      </VStack>
+
+      <VStack gap={5}>
+        <Text ml={10} fontSize={14} color="gray">End Date & Time</Text>
+        <DateTimePicker
+          onChange={(date) => updateField('endDate', date || new Date())}
+          currentDate={new Date(eventData?.endDate || new Date())}
         />
       </VStack>
 

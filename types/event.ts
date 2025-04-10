@@ -5,11 +5,13 @@ export type EventListResponse = ApiResponse<Event[]>;
 
 export type Event = {
   id: number;
+  uuid?: string;
   name: string;
   location: string;
   totalTicketsPurchased: number;
   totalTicketsEntered: number;
-  date: string;
+  startDate: string;
+  endDate: string;
   createdAt: string;
   updatedAt: string;
 }

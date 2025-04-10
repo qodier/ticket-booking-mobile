@@ -1,8 +1,14 @@
 import { userService } from '@/services/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { User } from '@/types/user';
+import { AxiosError } from 'axios';
+
+interface AuthError {
+  message: string;
+  field?: 'email' | 'password' | null;
+}
 
 interface AuthContextProps {
   isLoggedIn: boolean;
@@ -10,6 +16,8 @@ interface AuthContextProps {
   authenticate: (authMode: "login" | "register", email: string, password: string) => Promise<void>;
   logout: VoidFunction;
   user: User | null;
+  error: AuthError | null;
+  clearError: VoidFunction;
 }
 
 const AuthContext = React.createContext({} as AuthContextProps);
@@ -22,6 +30,7 @@ export function AuthenticationProvider({ children }: React.PropsWithChildren) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<AuthError | null>(null);
 
   useEffect(() => {
     async function checkIfLoggedIn() {
@@ -40,9 +49,30 @@ export function AuthenticationProvider({ children }: React.PropsWithChildren) {
     checkIfLoggedIn();
   }, []);
 
-  async function authenticate(authMode: "login" | "register", email: string, password: string) {
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const authenticate = useCallback(async (authMode: "login" | "register", email: string, password: string) => {
     try {
       setIsLoadingAuth(true);
+      setError(null);
+
+      // Basic validation
+      if (!email.trim()) {
+        setError({ message: "Email is required", field: "email" });
+        return;
+      }
+
+      if (!password.trim()) {
+        setError({ message: "Password is required", field: "password" });
+        return;
+      }
+
+      if (password.length < 6) {
+        setError({ message: "Password must be at least 6 characters", field: "password" });
+        return;
+      }
 
       const response = await userService[authMode](email, password);
 
@@ -55,27 +85,48 @@ export function AuthenticationProvider({ children }: React.PropsWithChildren) {
       }
     } catch (error) {
       setIsLoggedIn(false);
+      
+      if (error instanceof AxiosError) {
+        const errorMessage = error.response?.data?.message || 
+          (authMode === 'login' ? 'Invalid credentials' : 'Registration failed');
+        
+        setError({ 
+          message: errorMessage,
+          field: errorMessage.toLowerCase().includes('email') ? 'email' : 
+                 errorMessage.toLowerCase().includes('password') ? 'password' : null
+        });
+      } else {
+        setError({ 
+          message: 'Network error. Please check your connection.',
+          field: null
+        });
+      }
     } finally {
       setIsLoadingAuth(false);
     }
-  }
+  }, []);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     setIsLoggedIn(false);
+    setUser(null);
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
-  }
+    router.replace('/login');
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    authenticate,
+    logout,
+    isLoggedIn,
+    isLoadingAuth,
+    user,
+    error,
+    clearError
+  }), [authenticate, logout, isLoggedIn, isLoadingAuth, user, error, clearError]);
 
   return (
-    <AuthContext.Provider
-      value={ {
-        authenticate,
-        logout,
-        isLoggedIn,
-        isLoadingAuth,
-        user,
-      } }>
-      { children }
+    <AuthContext.Provider value={contextValue}>
+      {children}
     </AuthContext.Provider>
   );
 }
